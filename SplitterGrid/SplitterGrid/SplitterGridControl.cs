@@ -317,7 +317,7 @@ namespace SplitterGrid
 
             menuFlyout.Items.Add(new MenuFlyoutSeparator());
 
-            var addPanelMenuSubItem = new MenuFlyoutSubItem() { Text = "Add Panel" };
+            var addPanelMenuSubItem = new MenuFlyoutSubItem() { Text = "Add Edge Panel" };
             menuFlyout.Items.Add(addPanelMenuSubItem);
 
             addPanelMenuSubItem.Items.Add(new MenuFlyoutItem()
@@ -325,7 +325,7 @@ namespace SplitterGrid
                 Text = "Top",
                 Command = new RelayCommand(() =>
                 {
-                    GetParentLayout()?.AddSplitterEdge(SplitterEdgeDockKind.Top);
+                    GetParentLayout()?.AddSplitterEdge(SplitterEdgeKind.Top);
                 }),
             });
 
@@ -334,7 +334,7 @@ namespace SplitterGrid
                 Text = "Bottom",
                 Command = new RelayCommand(() =>
                 {
-                    GetParentLayout()?.AddSplitterEdge(SplitterEdgeDockKind.Bottom);
+                    GetParentLayout()?.AddSplitterEdge(SplitterEdgeKind.Bottom);
                 }),
             });
 
@@ -343,7 +343,7 @@ namespace SplitterGrid
                 Text = "Left",
                 Command = new RelayCommand(() =>
                 {
-                    GetParentLayout()?.AddSplitterEdge(SplitterEdgeDockKind.Left);
+                    GetParentLayout()?.AddSplitterEdge(SplitterEdgeKind.Left);
                 }),
             });
 
@@ -352,7 +352,7 @@ namespace SplitterGrid
                 Text = "Right",
                 Command = new RelayCommand(() =>
                 {
-                    GetParentLayout()?.AddSplitterEdge(SplitterEdgeDockKind.Right);
+                    GetParentLayout()?.AddSplitterEdge(SplitterEdgeKind.Right);
                 }),
             });
 

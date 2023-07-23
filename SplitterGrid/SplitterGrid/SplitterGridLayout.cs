@@ -16,7 +16,7 @@ namespace SplitterGrid
 {
     #region Supporting Classes
 
-    public enum SplitterEdgeDockKind
+    public enum SplitterEdgeKind
     {
         None,
         Left,
@@ -158,7 +158,7 @@ namespace SplitterGrid
             _topLevelSplitterGridControl = splitterGridControl;
         }
 
-        public void AddSplitterEdge(SplitterEdgeDockKind splitterEdgeDockKind)
+        public void AddSplitterEdge(SplitterEdgeKind splitterEdgeDockKind)
         {
             void AddSplitterEdge(int rowOrColumnIndex, SplitterMode splitterMode, double proportion)
             {
@@ -187,24 +187,24 @@ namespace SplitterGrid
 
             switch (splitterEdgeDockKind)
             {
-                case SplitterEdgeDockKind.Left:
-                    {
-                        AddSplitterEdge(0, SplitterMode.Vertical, 0.3);
-                    }
-                    break;
-                case SplitterEdgeDockKind.Right:
+                case SplitterEdgeKind.Left:
                     {
                         AddSplitterEdge(1, SplitterMode.Vertical, 0.7);
                     }
                     break;
-                case SplitterEdgeDockKind.Top:
+                case SplitterEdgeKind.Right:
+                    {
+                        AddSplitterEdge(0, SplitterMode.Vertical, 0.7);
+                    }
+                    break;
+                case SplitterEdgeKind.Top:
                     {
                         AddSplitterEdge(1, SplitterMode.Horizontal, 0.7);
                     }
                     break;
-                case SplitterEdgeDockKind.Bottom:
+                case SplitterEdgeKind.Bottom:
                     {
-                        AddSplitterEdge(0, SplitterMode.Horizontal, 0.3);
+                        AddSplitterEdge(0, SplitterMode.Horizontal, 0.7);
                     }
                     break;
             }
