@@ -13,8 +13,16 @@ namespace SplitterGrid
     /// </summary>
     public interface ISplitterPanelDataContextFactory
     {
-        IEnumerable<(string, Type, DataTemplate)> GetSupportedDataContexts();
+        /// <summary>
+        /// Returns the supported data contexts keyed by user facing descriptive name
+        /// </summary>
+        Dictionary<string, Type> GetSupportedDataContexts();
 
+        /// <summary>
+        /// For the given data context type, returns a default data context instance for the type
+        /// </summary>
+        /// <param name="type">The data context type</param>
+        /// <returns>A default instance of the data context type</returns>
         object CreateDataContext(Type type);
     }
 }

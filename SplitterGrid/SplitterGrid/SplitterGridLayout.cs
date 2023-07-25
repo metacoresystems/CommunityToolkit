@@ -37,8 +37,6 @@ namespace SplitterGrid
         private SplitterGridControl _topLevelSplitterGridControl;
         private Grid _parentGrid;
 
-        private bool _isDragActive;
-
         private const int MinDesktopLength = 100;
 
         // Define a dependency property for design mode
@@ -54,6 +52,20 @@ namespace SplitterGrid
                 typeof(ISplitterPanelDataContextFactory),
                 typeof(SplitterGridLayout),
                 new Microsoft.UI.Xaml.PropertyMetadata(null));
+
+        // Define a dependency property for the grid splitter thickness
+        public static readonly Microsoft.UI.Xaml.DependencyProperty GridSplitterThicknessProperty =
+            Microsoft.UI.Xaml.DependencyProperty.Register(nameof(GridSplitterThickness),
+                typeof(double),
+                typeof(SplitterGridLayout),
+                new Microsoft.UI.Xaml.PropertyMetadata(5.0, OnGridSplitterThicknessChanged));
+
+        // Define a dependency property for the panel data template selector
+        public static readonly Microsoft.UI.Xaml.DependencyProperty DataTemplateSelectorProperty =
+            Microsoft.UI.Xaml.DependencyProperty.Register(nameof(DataTemplateSelector),
+                typeof(DataTemplateSelector),
+                typeof(SplitterGridLayout),
+                new Microsoft.UI.Xaml.PropertyMetadata(null, OnGridSplitterDataTemplateSelectorChanged));
 
         public SplitterGridLayout()
         {
@@ -80,18 +92,17 @@ namespace SplitterGrid
             SplitterGridLayout splitterGridLayout = dependencyObject as SplitterGridLayout;
             if (splitterGridLayout == null) return;
 
-            splitterGridLayout._topLevelSplitterGridControl.ToggleDesignMode((bool)args.NewValue);
+            splitterGridLayout._topLevelSplitterGridControl?.ToggleDesignMode((bool)args.NewValue);
         }
 
         public void OnCapturedPointerMove(SplitterGridControl capturingSplitterGrid, PointerRoutedEventArgs e)
         {
-            _isDragActive = true;
-
             // Get the current mouse position
             var currentPoint = e.GetCurrentPoint(this).Position;
 
             // Get the leaf splitter grids
-            var leafSplitterGrids = _topLevelSplitterGridControl.GetLeafSplitterGrids();
+            var leafSplitterGrids = _topLevelSplitterGridControl?.GetLeafSplitterGrids();
+            if (leafSplitterGrids == null) return;
 
             // Determine which leaf splitter grid the mouse is over
             foreach (var leafSplitterGrid in leafSplitterGrids.Where(l => l != capturingSplitterGrid))
@@ -116,7 +127,8 @@ namespace SplitterGrid
 
         public void OnCapturedPointerReleased(SplitterGridControl capturingSplitterGrid, PointerRoutedEventArgs e)
         {
-            var leafSplitterGrids = _topLevelSplitterGridControl.GetLeafSplitterGrids();
+            var leafSplitterGrids = _topLevelSplitterGridControl?.GetLeafSplitterGrids();
+            if (leafSplitterGrids == null) return;
 
             // Get the leaf splitter grids
             SplitterGridControl dropActiveGrid = leafSplitterGrids.Where(g => g.IsDropActive).FirstOrDefault();
@@ -127,14 +139,8 @@ namespace SplitterGrid
                 object dropActiveDataContext = dropActiveGrid.DataContext;
                 object capturingDataContext = capturingSplitterGrid.DataContext;
 
-                DataTemplate dropActiveDataTemplate = dropActiveGrid.ContentControl.ContentTemplate;
-                DataTemplate capturingDataTemplate = capturingSplitterGrid.ContentControl.ContentTemplate;
-
                 dropActiveGrid.DataContext = capturingDataContext;
-                dropActiveGrid.ContentControl.ContentTemplate = capturingDataTemplate;
-
                 capturingSplitterGrid.DataContext = dropActiveDataContext;
-                capturingSplitterGrid.ContentControl.ContentTemplate = dropActiveDataTemplate;
             }
 
             // Determine which leaf splitter grid the mouse is over
@@ -142,17 +148,34 @@ namespace SplitterGrid
             {
                 leafSplitterGrid.SetDropActive(false);
             }
+        }
 
-            _isDragActive = false;
+        private static void OnGridSplitterThicknessChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args)
+        {
+            SplitterGridLayout splitterGridLayout = (SplitterGridLayout)dependencyObject;
+            if (splitterGridLayout == null) return;
+
+            // Propagate down the grid splitter tree
+            splitterGridLayout._topLevelSplitterGridControl?.SetGridSplitterThickness((double)args.NewValue);
+        }
+
+        private static void OnGridSplitterDataTemplateSelectorChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args)
+        {
+            SplitterGridLayout splitterGridLayout = (SplitterGridLayout)dependencyObject;
+            if (splitterGridLayout == null) return;
+
+            splitterGridLayout._topLevelSplitterGridControl?.SetGridSplitterDataTemplateSelector((DataTemplateSelector)args.NewValue);
         }
 
         private void ReplaceTopLevelSplitterGridControl(SplitterGridControl splitterGridControl)
         {
             // Remove the current top level splitter grid control from the parent grid
-            _parentGrid.Children.Remove(_topLevelSplitterGridControl);
+            if (_topLevelSplitterGridControl != null)
+                _parentGrid.Children.Remove(_topLevelSplitterGridControl);
 
             // Add the new top level splitter grid control to the parent grid
-            _parentGrid.Children.Add(splitterGridControl);
+            if (splitterGridControl != null)
+                _parentGrid.Children.Add(splitterGridControl);
 
             // Set the new top level splitter grid control
             _topLevelSplitterGridControl = splitterGridControl;
@@ -194,7 +217,7 @@ namespace SplitterGrid
                     break;
                 case SplitterEdgeKind.Right:
                     {
-                        AddSplitterEdge(0, SplitterMode.Vertical, 0.7);
+                        AddSplitterEdge(0, SplitterMode.Vertical, 0.3);
                     }
                     break;
                 case SplitterEdgeKind.Top:
@@ -204,7 +227,7 @@ namespace SplitterGrid
                     break;
                 case SplitterEdgeKind.Bottom:
                     {
-                        AddSplitterEdge(0, SplitterMode.Horizontal, 0.7);
+                        AddSplitterEdge(0, SplitterMode.Horizontal, 0.3);
                     }
                     break;
             }
@@ -215,19 +238,47 @@ namespace SplitterGrid
             base.OnApplyTemplate();
 
             _topLevelSplitterGridControl = FindName("rootSplitterGrid") as SplitterGridControl;
+            _topLevelSplitterGridControl?.ToggleDesignMode(DesignMode);
+            _topLevelSplitterGridControl?.SetGridSplitterThickness(GridSplitterThickness);
+            _topLevelSplitterGridControl?.SetGridSplitterDataTemplateSelector(DataTemplateSelector);
+
             _parentGrid = FindName("parentGrid") as Grid;
         }
 
+        /// <summary>
+        /// Indicates whether the panel layout is in design mode
+        /// </summary>
         public bool DesignMode
         {
             get => (bool)GetValue(DesignModeProperty);
             set => SetValue(DesignModeProperty, value);
         }
 
+        /// <summary>
+        /// Data context factory for creating grid splitter data contexts
+        /// </summary>
         public ISplitterPanelDataContextFactory DataContextFactory
         {
             get => (ISplitterPanelDataContextFactory)GetValue(DataContextFactoryProperty);
             set => SetValue(DataContextFactoryProperty, value);
+        }
+
+        /// <summary>
+        /// The thickness of the grid splitters in the layout
+        /// </summary>
+        public double GridSplitterThickness
+        {
+            get => (double)GetValue(GridSplitterThicknessProperty);
+            set => SetValue(GridSplitterThicknessProperty, value);
+        }
+
+        /// <summary>
+        /// The data template selector for the panels in the layout
+        /// </summary>
+        public DataTemplateSelector DataTemplateSelector
+        {
+            get => (DataTemplateSelector)GetValue(DataTemplateSelectorProperty);
+            set => SetValue(DataTemplateSelectorProperty, value);
         }
     }
 }

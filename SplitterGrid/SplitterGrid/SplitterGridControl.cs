@@ -28,6 +28,8 @@ namespace SplitterGrid
     {
         private readonly SplitterPanelContainerInfo _containerInfo;
 
+        private readonly double DefaultSplitterThickness = 5.0;
+
         // For when this panel is being dragged to another location
         private Point _dragStart;
         private Grid _dragPreviewGrid;
@@ -296,20 +298,18 @@ namespace SplitterGrid
             // For splitting
             // Available panels are determined by the injected splitter panel data context factory
             var menuFlyout = new MenuFlyout();
-
             var setPanelMenuItem = new MenuFlyoutSubItem() { Text = "Set Panel Content" };
-
             menuFlyout.Items.Add(setPanelMenuItem);
 
             foreach (var supportedDataContext in dataContextFactory.GetSupportedDataContexts())
             {
                 setPanelMenuItem.Items.Add(new MenuFlyoutItem()
                 {
-                    Text = supportedDataContext.Item1,
+                    Text = supportedDataContext.Key,
                     Command = new RelayCommand(() =>
                     {
-                        DataContext = dataContextFactory.CreateDataContext(supportedDataContext.Item2);
-                        _contentControl.ContentTemplate = supportedDataContext.Item3;
+                        DataContext = dataContextFactory.CreateDataContext(supportedDataContext.Value);
+                        _contentControl.ContentTemplateSelector = GetParentLayout()?.DataTemplateSelector;
                     },
                     () => !_containerInfo.IsSplitterActive)
                 });
@@ -317,73 +317,51 @@ namespace SplitterGrid
 
             menuFlyout.Items.Add(new MenuFlyoutSeparator());
 
-            var addPanelMenuSubItem = new MenuFlyoutSubItem() { Text = "Add Edge Panel" };
+            var addPanelMenuSubItem = new MenuFlyoutSubItem() { Text = "Add Panel" };
             menuFlyout.Items.Add(addPanelMenuSubItem);
 
-            addPanelMenuSubItem.Items.Add(new MenuFlyoutItem()
+            void CreateAddPanelSubMenuItem(string description, SplitterEdgeKind edgeKind)
             {
-                Text = "Top",
-                Command = new RelayCommand(() =>
+                addPanelMenuSubItem.Items.Add(new MenuFlyoutItem()
                 {
-                    GetParentLayout()?.AddSplitterEdge(SplitterEdgeKind.Top);
-                }),
-            });
+                    Text = description,
+                    Command = new RelayCommand(() =>
+                    {
+                        GetParentLayout()?.AddSplitterEdge(edgeKind);
+                    }),
+                });
+            }
 
-            addPanelMenuSubItem.Items.Add(new MenuFlyoutItem()
+            CreateAddPanelSubMenuItem("Top", SplitterEdgeKind.Top);
+            CreateAddPanelSubMenuItem("Bottom", SplitterEdgeKind.Bottom);
+            CreateAddPanelSubMenuItem("Left", SplitterEdgeKind.Left);
+            CreateAddPanelSubMenuItem("Right", SplitterEdgeKind.Right);
+
+            var splitPanelSubMenuItem = new MenuFlyoutSubItem() { Text = "Split Panel" };
+
+            void CreateSplitPanelSubMenuItem(string description, SplitterMode mode)
             {
-                Text = "Bottom",
-                Command = new RelayCommand(() =>
+                var splitMenuItem = new MenuFlyoutItem()
                 {
-                    GetParentLayout()?.AddSplitterEdge(SplitterEdgeKind.Bottom);
-                }),
-            });
+                    Text = description,
+                    Command = new RelayCommand(() => SetSplitterMode(mode), () => !_containerInfo.IsSplitterActive)
+                };
 
-            addPanelMenuSubItem.Items.Add(new MenuFlyoutItem()
-            {
-                Text = "Left",
-                Command = new RelayCommand(() =>
-                {
-                    GetParentLayout()?.AddSplitterEdge(SplitterEdgeKind.Left);
-                }),
-            });
+                splitPanelSubMenuItem.Items.Add(splitMenuItem);
+            }
 
-            addPanelMenuSubItem.Items.Add(new MenuFlyoutItem()
-            {
-                Text = "Right",
-                Command = new RelayCommand(() =>
-                {
-                    GetParentLayout()?.AddSplitterEdge(SplitterEdgeKind.Right);
-                }),
-            });
-
-            var splitPanelSubMenuItem = new MenuFlyoutSubItem() { Text = "Split Panel" };          
-
-            var splitHorizontallyMenuItem = new MenuFlyoutItem()
-            {
-                Text = "Horizontal",
-                Command = new RelayCommand(() => SetSplitterMode(SplitterMode.Horizontal), () => !_containerInfo.IsSplitterActive)
-            };
-
-            splitPanelSubMenuItem.Items.Add(splitHorizontallyMenuItem);
-
-            var splitVerticallyMenuItem = new MenuFlyoutItem()
-            {
-                Text = "Vertical",
-                Command = new RelayCommand(() => SetSplitterMode(SplitterMode.Vertical), () => !_containerInfo.IsSplitterActive)
-            };
-
-            splitPanelSubMenuItem.Items.Add(splitVerticallyMenuItem);
+            CreateSplitPanelSubMenuItem("Horizontal", SplitterMode.Horizontal);
+            CreateSplitPanelSubMenuItem("Vertical", SplitterMode.Vertical);
 
             menuFlyout.Items.Add(splitPanelSubMenuItem);
-
             menuFlyout.Items.Add(new MenuFlyoutSeparator());
-
             menuFlyout.Items.Add(new MenuFlyoutItem()
             {
                 Text = "Remove Panel",
                 Command = new RelayCommand(() => RemovePanel(), () => !_containerInfo.IsSplitterActive)
             });
 
+            // Set the panel context menu
             _designModeOverlayGrid.ContextFlyout = menuFlyout;
         }
 
@@ -393,144 +371,191 @@ namespace SplitterGrid
             _designModeOverlayGrid.ContextFlyout = null;
         }
 
+        private void CreateContentHostUI()
+        {
+            // If any UI elements dedicated to being a splitter host, remove and unsubscribe them
+            if (_gridSplitter != null)
+            {
+                _gridSplitter.PointerPressed -= OnGridSplitterPointerPressed;
+                _gridSplitter = null;
+            }
+
+            _firstChildSplitterGrid = null;
+            _secondChildSplitterGrid = null;
+
+            // The splitter grid is to become a content host, so we need to set the panel
+            // up with content control and design overlays
+            Children.Clear();
+
+            // We never have any rows or columns, just a flat grid with single cell
+            RowDefinitions.Clear();
+            ColumnDefinitions.Clear();
+
+            // The content control stretches to fill the entire grid
+            _contentControl = new ContentControl()
+            {
+                HorizontalContentAlignment = HorizontalAlignment.Stretch,
+                VerticalContentAlignment = VerticalAlignment.Stretch
+            };
+
+            // The design mode overlay is a semi-transparent overlay that covers the entire panel
+            // and shows to the user that the panel is in design mode
+            _designModeOverlayGrid = new Grid()
+            {
+                Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Black),
+                Opacity = 0.3,
+                Visibility = Visibility.Collapsed
+            };
+
+            // The border is capable of highlighting to show that the panel is currently a drop target
+            _designModeOverlayBorder = new Border()
+            {
+                Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent),
+                IsHitTestVisible = false,
+                BorderThickness = new Thickness(2),
+                BorderBrush = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent)
+            };
+
+            // Add in correct Z-order (bottom to top)
+            Children.Add(_contentControl);
+            Children.Add(_designModeOverlayGrid);
+            Children.Add(_designModeOverlayBorder);
+        }
+
+        private void CreateSplitterUI(SplitterMode splitterMode)
+        {
+            ISplitterPanelDataContextFactory dataContextFactory = GetParentLayout()?.DataContextFactory;
+            if (dataContextFactory == null) return;
+
+            // Obtain and preserve the data context and content template of the currently
+            // hosted content
+            object currentDataContext = DataContext;
+
+            // Blank on the current hosted content
+            DataContext = null;
+
+            // If any UI elements dedicated to being a content host, remove and unsubscribe them
+            _contentControl = null;
+            _designModeOverlayGrid = null;
+            _designModeOverlayBorder = null;
+
+            Children.Clear();
+
+            // The grid splitter is to become a host for two child splitter grids, either in
+            // horizontal or vertical orientation
+            if (splitterMode == SplitterMode.Horizontal)
+            {
+                CreateHorizontalSplit(currentDataContext);
+            }
+            else
+            {
+                CreateVerticalSplit(currentDataContext);
+            }
+        }
+
         public void SetSplitterMode(SplitterMode splitterMode)
         {
             if (splitterMode == SplitterMode.ContentHost)
             {
-                // If any UI elements dedicated to being a splitter host, remove and unsubscribe them
-                if (_gridSplitter != null)
-                {
-                    _gridSplitter.PointerPressed -= OnGridSplitterPointerPressed;
-                    _gridSplitter = null;
-                }
-
-                _firstChildSplitterGrid = null;
-                _secondChildSplitterGrid = null;
-
-                // The splitter grid is to become a content host, so we need to set the panel
-                // up with content control and design overlays
-                Children.Clear();
-
-                // We never have any rows or columns, just a flat grid with single cell
-                RowDefinitions.Clear();
-                ColumnDefinitions.Clear();
-
-                _contentControl = new ContentControl()
-                {
-                    HorizontalContentAlignment = HorizontalAlignment.Stretch,
-                    VerticalContentAlignment = VerticalAlignment.Stretch
-                };
-
-                _designModeOverlayGrid = new Grid()
-                {
-                    Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Black),
-                    Opacity = 0.3,
-                    Visibility = Visibility.Collapsed
-                };
-
-                _designModeOverlayBorder = new Border()
-                {
-                    Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent),
-                    IsHitTestVisible = false,
-                    BorderThickness = new Thickness(2),
-                    BorderBrush = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent)
-                };
-
-                // Add in correct Z-order (bottom to top)
-                Children.Add(_contentControl);
-                Children.Add(_designModeOverlayGrid);
-                Children.Add(_designModeOverlayBorder);
+                CreateContentHostUI();
             }
             else
             {
-                ISplitterPanelDataContextFactory dataContextFactory = GetParentLayout()?.DataContextFactory;
-                if (dataContextFactory == null) return;
-
-                // Obtain and preserve the data context and content template of the currently
-                // hosted content
-                object currentDataContext = DataContext;
-                DataTemplate currentDataTemplate = ContentControl.ContentTemplate;
-
-                // Blank on the current hosted content
-                DataContext = null;
-                ContentControl.ContentTemplate = null;
-
-                // If any UI elements dedicated to being a content host, remove and unsubscribe them
-                _contentControl = null;
-                _designModeOverlayGrid = null;
-                _designModeOverlayBorder = null;
-
-                Children.Clear();
-
-                // The grid splitter is to become a host for two child splitter grids, either in
-                // horizontal or vertical orientation
-                if (splitterMode == SplitterMode.Horizontal)
-                {
-                    CreateHorizontalSplit(currentDataContext, currentDataTemplate);
-                }
-                else
-                {
-                    CreateVerticalSplit(currentDataContext, currentDataTemplate);
-                }
+                CreateSplitterUI(splitterMode);
             }
 
             // Update the serializable container info
             _containerInfo.SetSplitterMode(splitterMode);
         }
 
-        private void CreateHorizontalSplit(object dataContext, DataTemplate dataTemplate)
+        /// <summary>
+        /// Recursively sets the thickness of all grid splitters in the panel,
+        /// including on child splitter grid controls
+        /// </summary>
+        /// <param name="thickness"></param>
+        public void SetGridSplitterThickness(double thickness)
         {
-            var firstRowDefinition = new RowDefinition();
+            // If a content host, we don't have a grid splitter
+            if (_containerInfo.SplitterInfo.Mode == SplitterMode.ContentHost) return;
 
-            firstRowDefinition.SetBinding(RowDefinition.HeightProperty,
-                new Microsoft.UI.Xaml.Data.Binding()
-                {
-                    Source = _containerInfo,
-                    Path = new PropertyPath($"{nameof(SplitterPanelContainerInfo.SplitterInfo)}.{nameof(SplitterInfo.FirstChildGridLength)}"),
-                    Mode = Microsoft.UI.Xaml.Data.BindingMode.TwoWay,
-                    Converter = new GridLengthConverter()
-                });
+            if (_containerInfo.SplitterInfo.Mode == SplitterMode.Horizontal)
+            {
+                _gridSplitter.Height = thickness;
+            }
+            else if (_containerInfo.SplitterInfo.Mode == SplitterMode.Vertical)
+            {
+                _gridSplitter.Width = thickness;
+            }
 
-            // We now need two rows in the splitter grid, and we place the splitter
-            // in the middle assigned to the second row
-            var secondRowDefinition = new RowDefinition();
+            _firstChildSplitterGrid?.SetGridSplitterThickness(thickness);
+            _secondChildSplitterGrid?.SetGridSplitterThickness(thickness);
+        }
 
-            secondRowDefinition.SetBinding(RowDefinition.HeightProperty,
-                new Microsoft.UI.Xaml.Data.Binding()
-                {
-                    Source = _containerInfo,
-                    Path = new PropertyPath($"{nameof(SplitterPanelContainerInfo.SplitterInfo)}.{nameof(SplitterInfo.SecondChildGridLength)}"),
-                    Mode = Microsoft.UI.Xaml.Data.BindingMode.TwoWay,
-                    Converter = new GridLengthConverter()
-                });
+        /// <summary>
+        /// Recursively sets the data template selector of all grid splitters in the panel,
+        /// including on child splitter grid controls
+        /// </summary>
+        /// <param name="dataTemplateSelector">The data template selector that the splitter grid control should use</param>
+        public void SetGridSplitterDataTemplateSelector(DataTemplateSelector dataTemplateSelector)
+        {
+            if (_contentControl != null) _contentControl.ContentTemplateSelector = dataTemplateSelector;
+            _firstChildSplitterGrid?.SetGridSplitterDataTemplateSelector(dataTemplateSelector);
+            _secondChildSplitterGrid?.SetGridSplitterDataTemplateSelector(dataTemplateSelector);
+        }
 
-            // Add the two row definitions
-            RowDefinitions.Add(firstRowDefinition);
-            RowDefinitions.Add(secondRowDefinition);
+        private SplitterGridControl CreateChildSplitterControl(object dataContext)
+        {
+            var splitterGridControl = new SplitterGridControl(_containerInfo);
+
+            splitterGridControl.DataContext = dataContext;
+            splitterGridControl._contentControl.ContentTemplateSelector = GetParentLayout()?.DataTemplateSelector;
+
+            Children.Add(splitterGridControl);
+
+            splitterGridControl.ToggleDesignMode(DesignMode);
+
+            return splitterGridControl;
+        }
+
+        private void CreateHorizontalSplit(object dataContext)
+        {
+            RowDefinition CreateRowDefinition(string gridLengthPropertyName)
+            {
+                var rowDefinition = new RowDefinition();
+
+                rowDefinition.SetBinding(RowDefinition.HeightProperty,
+                    new Microsoft.UI.Xaml.Data.Binding()
+                    {
+                        Source = _containerInfo,
+                        Path = new PropertyPath($"{nameof(SplitterPanelContainerInfo.SplitterInfo)}.{gridLengthPropertyName}"),
+                        Mode = Microsoft.UI.Xaml.Data.BindingMode.TwoWay,
+                        Converter = new GridLengthConverter()
+                    });
+
+                return rowDefinition;
+            }
+
+            // Create the row definitions for the horizontal split, one for each child
+            RowDefinitions.Add(CreateRowDefinition(nameof(SplitterInfo.FirstChildGridLength)));
+            RowDefinitions.Add(CreateRowDefinition(nameof(SplitterInfo.SecondChildGridLength)));
 
             // Add the first child splitter to the first row
-            _firstChildSplitterGrid = new SplitterGridControl(_containerInfo);
-
-            // And assign to first child now instead
-            _firstChildSplitterGrid.DataContext = dataContext;
-            _firstChildSplitterGrid.ContentControl.ContentTemplate = dataTemplate;
-
-            Children.Add(_firstChildSplitterGrid);
-            _firstChildSplitterGrid.ToggleDesignMode(DesignMode);
+            _firstChildSplitterGrid = CreateChildSplitterControl(dataContext);
 
             // And finally the second splitter control to the second row
-            _secondChildSplitterGrid = new SplitterGridControl(_containerInfo);
+            _secondChildSplitterGrid = CreateChildSplitterControl(null);
 
             Grid.SetRow(_secondChildSplitterGrid, 1);
-            _secondChildSplitterGrid.Margin = new Thickness(0, 5, 0, 0);
             Children.Add(_secondChildSplitterGrid);
-            _secondChildSplitterGrid.ToggleDesignMode(DesignMode);
+
+            double gridSplitterThickness = GetParentLayout()?.GridSplitterThickness ?? DefaultSplitterThickness;
+            _secondChildSplitterGrid.Margin = new Thickness(0, gridSplitterThickness, 0, 0);
 
             // And the grid splitter to the second row
             _gridSplitter = new GridSplitter()
             {
-                MinHeight = 5,
-                Height = 5,
+                MinHeight = gridSplitterThickness,
+                Height = gridSplitterThickness,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 VerticalAlignment = VerticalAlignment.Top,
                 ResizeDirection = GridSplitter.GridResizeDirection.Rows,
@@ -545,60 +570,44 @@ namespace SplitterGrid
             Grid.SetRow(_gridSplitter, 1);
         }
 
-        private void CreateVerticalSplit(object dataContext, DataTemplate dataTemplate)
+        private void CreateVerticalSplit(object dataContext)
         {
+            ColumnDefinition CreateColumnDefinition(string gridColumnPropertyName)
+            {
+                var columnDefinition = new ColumnDefinition();
+
+                columnDefinition.SetBinding(ColumnDefinition.WidthProperty,
+                    new Microsoft.UI.Xaml.Data.Binding()
+                    {
+                        Source = _containerInfo,
+                        Path = new PropertyPath($"{nameof(SplitterPanelContainerInfo.SplitterInfo)}.{gridColumnPropertyName}"),
+                        Mode = Microsoft.UI.Xaml.Data.BindingMode.TwoWay,
+                        Converter = new GridLengthConverter()
+                    });
+
+                return columnDefinition;
+            }
+
             // We now need two columns in the splitter grid, and we place the splitter
             // in the middle assigned to the second column
-            var firstColumnDefinition = new ColumnDefinition();
+            ColumnDefinitions.Add(CreateColumnDefinition(nameof(SplitterInfo.FirstChildGridLength)));
+            ColumnDefinitions.Add(CreateColumnDefinition(nameof(SplitterInfo.SecondChildGridLength)));
 
-            firstColumnDefinition.SetBinding(ColumnDefinition.WidthProperty,
-                new Microsoft.UI.Xaml.Data.Binding()
-                {
-                    Source = _containerInfo,
-                    Path = new PropertyPath($"{nameof(SplitterPanelContainerInfo.SplitterInfo)}.{nameof(SplitterInfo.FirstChildGridLength)}"),
-                    Mode = Microsoft.UI.Xaml.Data.BindingMode.TwoWay,
-                    Converter = new GridLengthConverter()
-                });
-
-            var secondColumnDefinition = new ColumnDefinition();
-
-            // Bind the column definition to the proportion. This will drive the width of
-            // the two columns by the splitter
-            secondColumnDefinition.SetBinding(ColumnDefinition.WidthProperty,
-                new Microsoft.UI.Xaml.Data.Binding()
-                {
-                    Source = _containerInfo,
-                    Path = new PropertyPath($"{nameof(SplitterPanelContainerInfo.SplitterInfo)}.{nameof(SplitterInfo.SecondChildGridLength)}"),
-                    Mode = Microsoft.UI.Xaml.Data.BindingMode.TwoWay,
-                    Converter = new GridLengthConverter()
-                });
-
-            // Add the two column definitions
-            ColumnDefinitions.Add(firstColumnDefinition);
-            ColumnDefinitions.Add(secondColumnDefinition);
-
-            _firstChildSplitterGrid = new SplitterGridControl(_containerInfo);
-
-            // Reassign to the new splitter grid on the left hand side
-            _firstChildSplitterGrid.DataContext = dataContext;
-            _firstChildSplitterGrid.ContentControl.ContentTemplate = dataTemplate;
-
-            Children.Add(_firstChildSplitterGrid);
-            _firstChildSplitterGrid.ToggleDesignMode(DesignMode);
+            _firstChildSplitterGrid = CreateChildSplitterControl(dataContext);
 
             // And finally the second splitter control to the second column
-            _secondChildSplitterGrid = new SplitterGridControl(_containerInfo);
+            _secondChildSplitterGrid = CreateChildSplitterControl(null);
 
             Grid.SetColumn(_secondChildSplitterGrid, 1);
-            _secondChildSplitterGrid.Margin = new Thickness(5, 0, 0, 0);
-            Children.Add(_secondChildSplitterGrid);
-            _secondChildSplitterGrid.ToggleDesignMode(DesignMode);
+
+            double gridSplitterThickness = GetParentLayout()?.GridSplitterThickness ?? DefaultSplitterThickness;
+            _secondChildSplitterGrid.Margin = new Thickness(gridSplitterThickness, 0, 0, 0);
 
             // Add the grid splitter last to ensure it is on top of the other controls
             _gridSplitter = new GridSplitter()
             {
-                MinWidth = 5,
-                Width = 5,
+                MinWidth = gridSplitterThickness,
+                Width = gridSplitterThickness,
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Stretch,
                 ResizeDirection = GridSplitter.GridResizeDirection.Columns,
@@ -614,36 +623,42 @@ namespace SplitterGrid
             Grid.SetColumn(_gridSplitter, 1);
         }
 
-        /// <summary>
-        /// Replaces the first child grid splitter with the new splitter grid control
-        /// </summary>
-        /// <param name="newFirstChildSplitterGridControl"></param>
-        public void ReplaceFirstChildGridSplitter(SplitterGridControl newFirstChildSplitterGridControl, double proportion = 0.5)
+        private void ReplaceChildSplitterControl(ref SplitterGridControl currentSplitterGridControl, SplitterGridControl newSplitterGridControl, double proportion)
         {
-            if (_firstChildSplitterGrid == null) return;
+            if (currentSplitterGridControl == null) return;
 
-            int replaceIndex = Children.IndexOf(_firstChildSplitterGrid);
+            int replaceIndex = Children.IndexOf(currentSplitterGridControl);
             if (replaceIndex == -1) return;
 
             if (replaceIndex == Children.Count - 1)
             {
                 // The grid splitter is the last child, so just remove it
                 Children.RemoveAt(replaceIndex);
-                Children.Add(newFirstChildSplitterGridControl);
+                Children.Add(newSplitterGridControl);
             }
             else
             {
-                // The grid splitter is not the last child, so replace it with the new splitter
+                // The grid splitter is not the last child, so we need to insert the new splitter grid control
+                // at the same index as the old one
                 Children.RemoveAt(replaceIndex);
-                Children.Insert(replaceIndex, newFirstChildSplitterGridControl);
+                Children.Insert(replaceIndex, newSplitterGridControl);
             }
 
-            _firstChildSplitterGrid = newFirstChildSplitterGridControl;
+            currentSplitterGridControl = newSplitterGridControl;
 
-            ContainerInfo.SplitterInfo.FirstChildGridLength = proportion;
-            ContainerInfo.SplitterInfo.SecondChildGridLength = 1.0 - proportion;
+            _containerInfo.SplitterInfo.FirstChildGridLength = 1.0 - proportion;
+            _containerInfo.SplitterInfo.SecondChildGridLength = proportion;
 
-            _firstChildSplitterGrid.ToggleDesignMode(DesignMode);
+            currentSplitterGridControl.ToggleDesignMode(DesignMode);
+        }
+
+        /// <summary>
+        /// Replaces the first child grid splitter with the new splitter grid control
+        /// </summary>
+        /// <param name="newFirstChildSplitterGridControl"></param>
+        public void ReplaceFirstChildGridSplitter(SplitterGridControl newFirstChildSplitterGridControl, double proportion = 0.5)
+        {
+            ReplaceChildSplitterControl(ref _firstChildSplitterGrid, newFirstChildSplitterGridControl, proportion);
         }
 
         /// <summary>
@@ -652,43 +667,23 @@ namespace SplitterGrid
         /// <param name="newSecondChildSplitterGridControl"></param>
         public void ReplaceSecondChildGridSplitter(SplitterGridControl newSecondChildSplitterGridControl, double proportion = 0.5)
         {
-            if (_secondChildSplitterGrid == null) return;
+            ReplaceChildSplitterControl(ref _secondChildSplitterGrid, newSecondChildSplitterGridControl, proportion);
 
-            int replaceIndex = Children.IndexOf(_secondChildSplitterGrid);
-            if (replaceIndex == -1) return;
-
-            if (replaceIndex == Children.Count - 1)
-            {
-                // The grid splitter is the last child, so just remove it
-                Children.RemoveAt(replaceIndex);
-                Children.Add(newSecondChildSplitterGridControl);
-            }
-            else
-            {
-                // The grid splitter is not the last child, so replace it with the new splitter
-                Children.RemoveAt(replaceIndex);
-                Children.Insert(replaceIndex, newSecondChildSplitterGridControl);
-            }
-
-            _secondChildSplitterGrid = newSecondChildSplitterGridControl;
+            double gridSplitterThickness = GetParentLayout()?.GridSplitterThickness ?? DefaultSplitterThickness;
 
             // Ensure row or column settings
             if (_containerInfo.SplitterInfo.Mode == SplitterMode.Horizontal)
             {
                 Grid.SetRow(_secondChildSplitterGrid, 1);
-                _secondChildSplitterGrid.Margin = new Thickness(0, 5, 0, 0);
+                _secondChildSplitterGrid.Margin = new Thickness(0, gridSplitterThickness, 0, 0);
                 Children.Add(_secondChildSplitterGrid);
             }
             else if (_containerInfo.SplitterInfo.Mode == SplitterMode.Vertical)
             {
                 Grid.SetColumn(_secondChildSplitterGrid, 1);
-                _secondChildSplitterGrid.Margin = new Thickness(5, 0, 0, 0);
+                _secondChildSplitterGrid.Margin = new Thickness(gridSplitterThickness, 0, 0, 0);
                 Children.Add(_secondChildSplitterGrid);
             }
-
-            ContainerInfo.SplitterInfo.FirstChildGridLength = 1.0 - proportion;
-            ContainerInfo.SplitterInfo.SecondChildGridLength = proportion;
-            _secondChildSplitterGrid.ToggleDesignMode(DesignMode);
         }
 
         private void OnGridSplitterPointerPressed(object sender, PointerRoutedEventArgs e)
@@ -765,14 +760,12 @@ namespace SplitterGrid
                 if (!remainingGridControl._containerInfo.IsSplitterActive)
                 {
                     object remainingDataContext = remainingGridControl.DataContext;
-                    DataTemplate remainingDataTemplate = remainingGridControl.ContentControl.ContentTemplate;
 
                     // Ensure we now become a content host panel
                     SetSplitterMode(SplitterMode.ContentHost);
 
                     // And set the data context and content template back to this grid control
                     DataContext = remainingDataContext;
-                    ContentControl.ContentTemplate = remainingDataTemplate;
                 }
                 else
                 {
@@ -786,9 +779,5 @@ namespace SplitterGrid
             // Should be in design mode otherwise we would not have been asked to remove a child
             ToggleDesignMode(true);
         }
-
-        public SplitterPanelContainerInfo ContainerInfo => _containerInfo;
-
-        public ContentControl ContentControl => _contentControl;
     }
 }

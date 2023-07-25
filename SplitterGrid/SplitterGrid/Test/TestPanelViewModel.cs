@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Windows.UI;
 
-namespace SplitterGrid
+namespace SplitterGrid.Test
 {
     public class TestPanelViewModel
     {
