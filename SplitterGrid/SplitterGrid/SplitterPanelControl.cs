@@ -355,10 +355,7 @@ namespace SplitterGrid
                     Command = new RelayCommand(() =>
                     {
                         DataContext = dataContextFactory.CreateDataContext(supportedDataContext.Value);
-                        Console.WriteLine("SPONG1: " + DataContext);
-
                         var dataTemplateSelector = GetParentLayout()?.DataTemplateSelector;
-                        Console.WriteLine("SPONG2: " + dataTemplateSelector);
 
                         // Note: Would use a DataTemplateSelector here, but there seems to be a bug in
                         // Uno's repainting of the content control when the template selector is changed
@@ -366,7 +363,6 @@ namespace SplitterGrid
                         _contentControl.ContentTemplateSelector = dataTemplateSelector;
 
                         var dataTemplate = dataTemplateSelector?.SelectTemplate(DataContext, this);
-                        Console.WriteLine("SPONG3: " + dataTemplate);
                         _contentControl.ContentTemplate = dataTemplate;
                     },
                     () => !IsSplitterActive)
