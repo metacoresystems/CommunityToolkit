@@ -30,7 +30,8 @@ namespace SplitterGrid
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
-            DataContext = new PageViewModel();
+            SplitterPanelLayoutControl layoutControl = (SplitterPanelLayoutControl)FindName("splitterPanelLayout");
+            DataContext = new PageViewModel(layoutControl);
         }
     }
 }

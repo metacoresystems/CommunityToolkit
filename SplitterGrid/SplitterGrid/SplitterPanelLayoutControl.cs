@@ -16,7 +16,7 @@ namespace SplitterGrid
 {
     #region Supporting Classes
 
-    public enum SplitterEdgeKind
+    public enum SplitterPanelPosition
     {
         None,
         Left,
@@ -32,9 +32,9 @@ namespace SplitterGrid
     /// Allows for the creation of nested splitter grids, and also for splitter grids on
     /// the left, top, right or bottom of the layout
     /// </summary>
-    public class SplitterGridLayout : Control
+    public class SplitterPanelLayoutControl : Control
     {
-        private SplitterGridControl _topLevelSplitterGridControl;
+        private SplitterPanelControl _topLevelSplitterGridControl;
         private Grid _parentGrid;
 
         private const int MinDesktopLength = 100;
@@ -43,69 +43,69 @@ namespace SplitterGrid
         public static readonly Microsoft.UI.Xaml.DependencyProperty DesignModeProperty =
             Microsoft.UI.Xaml.DependencyProperty.Register(nameof(DesignMode),
                 typeof(bool),
-                typeof(SplitterGridLayout),
+                typeof(SplitterPanelLayoutControl),
                 new Microsoft.UI.Xaml.PropertyMetadata(false, OnDesignModeChanged));
 
         // Define a dependency property for the data context factory
         public static readonly Microsoft.UI.Xaml.DependencyProperty DataContextFactoryProperty =
             Microsoft.UI.Xaml.DependencyProperty.Register(nameof(DataContextFactory),
                 typeof(ISplitterPanelDataContextFactory),
-                typeof(SplitterGridLayout),
+                typeof(SplitterPanelLayoutControl),
                 new Microsoft.UI.Xaml.PropertyMetadata(null));
 
         // Define a dependency property for the grid splitter thickness
         public static readonly Microsoft.UI.Xaml.DependencyProperty GridSplitterThicknessProperty =
             Microsoft.UI.Xaml.DependencyProperty.Register(nameof(GridSplitterThickness),
                 typeof(double),
-                typeof(SplitterGridLayout),
+                typeof(SplitterPanelLayoutControl),
                 new Microsoft.UI.Xaml.PropertyMetadata(5.0, OnGridSplitterThicknessChanged));
 
         // Define a dependency property for the panel data template selector
         public static readonly Microsoft.UI.Xaml.DependencyProperty DataTemplateSelectorProperty =
             Microsoft.UI.Xaml.DependencyProperty.Register(nameof(DataTemplateSelector),
                 typeof(DataTemplateSelector),
-                typeof(SplitterGridLayout),
-                new Microsoft.UI.Xaml.PropertyMetadata(null, OnGridSplitterDataTemplateSelectorChanged));
+                typeof(SplitterPanelLayoutControl),
+                new Microsoft.UI.Xaml.PropertyMetadata(null, OnDataTemplateSelectorChanged));
 
-        public SplitterGridLayout()
+        public SplitterPanelLayoutControl()
         {
-            DefaultStyleKey = typeof(SplitterGridLayout);
+            DefaultStyleKey = typeof(SplitterPanelLayoutControl);
 
             // Ensure user will always be able to see each possible edge docker mode
             MinWidth = MinDesktopLength;
             MinHeight = MinDesktopLength;
         }
 
-        public void AppendDragPreview(Grid grid)
+        internal void AppendDragPreview(Grid grid)
         {
             // Append as last child so that is in front of all other elements
             _parentGrid.Children.Add(grid);
         }
 
-        public void RemoveDragPreview(Grid grid)
+        internal void RemoveDragPreview(Grid grid)
         {
             _parentGrid.Children.Remove(grid);
         }
 
         private static void OnDesignModeChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args)
         {
-            SplitterGridLayout splitterGridLayout = dependencyObject as SplitterGridLayout;
+            SplitterPanelLayoutControl splitterGridLayout = dependencyObject as SplitterPanelLayoutControl;
             if (splitterGridLayout == null) return;
 
             splitterGridLayout._topLevelSplitterGridControl?.ToggleDesignMode((bool)args.NewValue);
         }
 
-        public void OnCapturedPointerMove(SplitterGridControl capturingSplitterGrid, PointerRoutedEventArgs e)
+        internal void OnCapturedPointerMove(SplitterPanelControl capturingSplitterPanel, PointerRoutedEventArgs e)
         {
             // Get the current mouse position
             var currentPoint = e.GetCurrentPoint(this).Position;
 
             // Get the leaf splitter grids
-            var leafSplitterGrids = _topLevelSplitterGridControl?.GetLeafSplitterGrids();
+            var leafSplitterGrids = _topLevelSplitterGridControl?.GetContentHostSplitterPanels();
             if (leafSplitterGrids == null) return;
 
             // Determine which leaf splitter grid the mouse is over
-            foreach (var leafSplitterGrid in leafSplitterGrids.Where(l => l != capturingSplitterGrid))
+            foreach (var leafSplitterGrid in leafSplitterGrids.Where(l => l != capturingSplitterPanel))
             {
                 var transform = leafSplitterGrid.TransformToVisual(this);
                 var point = transform.TransformPoint(new Point(0, 0));
@@ -125,13 +125,13 @@ namespace SplitterGrid
             }
         }
 
-        public void OnCapturedPointerReleased(SplitterGridControl capturingSplitterGrid, PointerRoutedEventArgs e)
+        internal void OnCapturedPointerReleased(SplitterPanelControl capturingSplitterGrid, PointerRoutedEventArgs e)
         {
-            var leafSplitterGrids = _topLevelSplitterGridControl?.GetLeafSplitterGrids();
+            var leafSplitterGrids = _topLevelSplitterGridControl?.GetContentHostSplitterPanels();
             if (leafSplitterGrids == null) return;
 
             // Get the leaf splitter grids
-            SplitterGridControl dropActiveGrid = leafSplitterGrids.Where(g => g.IsDropActive).FirstOrDefault();
+            SplitterPanelControl dropActiveGrid = leafSplitterGrids.Where(g => g.IsDropActive).FirstOrDefault();
 
             if (dropActiveGrid != null)
             {
@@ -152,22 +152,22 @@ namespace SplitterGrid
 
         private static void OnGridSplitterThicknessChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args)
         {
-            SplitterGridLayout splitterGridLayout = (SplitterGridLayout)dependencyObject;
+            SplitterPanelLayoutControl splitterGridLayout = (SplitterPanelLayoutControl)dependencyObject;
             if (splitterGridLayout == null) return;
 
             // Propagate down the grid splitter tree
             splitterGridLayout._topLevelSplitterGridControl?.SetGridSplitterThickness((double)args.NewValue);
         }
 
-        private static void OnGridSplitterDataTemplateSelectorChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args)
+        private static void OnDataTemplateSelectorChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args)
         {
-            SplitterGridLayout splitterGridLayout = (SplitterGridLayout)dependencyObject;
+            SplitterPanelLayoutControl splitterGridLayout = (SplitterPanelLayoutControl)dependencyObject;
             if (splitterGridLayout == null) return;
 
-            splitterGridLayout._topLevelSplitterGridControl?.SetGridSplitterDataTemplateSelector((DataTemplateSelector)args.NewValue);
+            splitterGridLayout._topLevelSplitterGridControl?.SetDataTemplateSelector((DataTemplateSelector)args.NewValue);
         }
 
-        private void ReplaceTopLevelSplitterGridControl(SplitterGridControl splitterGridControl)
+        private void ReplaceTopLevelSplitterGridControl(SplitterPanelControl splitterGridControl)
         {
             // Remove the current top level splitter grid control from the parent grid
             if (_topLevelSplitterGridControl != null)
@@ -181,55 +181,63 @@ namespace SplitterGrid
             _topLevelSplitterGridControl = splitterGridControl;
         }
 
-        public void AddSplitterEdge(SplitterEdgeKind splitterEdgeDockKind)
+        /// <summary>
+        /// Adds a splitter panel to the layout in the specified relative position
+        /// </summary>
+        /// <param name="splitterPanelPosition">The position in the layout to which the panel should be added</param>
+        /// <exception cref="InvalidOperationException"></exception>
+        public void AddSplitterPanel(SplitterPanelPosition splitterPanelPosition)
         {
             void AddSplitterEdge(int rowOrColumnIndex, SplitterMode splitterMode, double proportion)
             {
                 // For this, we need to replace the current top level splitter grid control with a
                 // new one that is split vertically, and then place the old top level splitter grid
                 // control in the LHS column
-                var newTopLevelSplitterGridControl = new SplitterGridControl();
+                var newTopLevelSplitterGridControl = new SplitterPanelControl();                
 
                 // Get a reference to the of top level splitter grid control
                 var oldTopLevelSplitterGridControl = _topLevelSplitterGridControl;
 
                 // Replace the top level splitter grid control with the new one and split it horizontally
                 ReplaceTopLevelSplitterGridControl(newTopLevelSplitterGridControl);
-                newTopLevelSplitterGridControl.SetSplitterMode(splitterMode);
+                newTopLevelSplitterGridControl.SplitterMode = splitterMode;
 
-                // And now replace the lower pane with the old top level splitter grid control
                 if (rowOrColumnIndex == 0)
                 {
+                    // And now replace the upper pane with the old top level splitter grid control
                     newTopLevelSplitterGridControl.ReplaceFirstChildGridSplitter(oldTopLevelSplitterGridControl, proportion);
                 }
                 else
                 {
+                    // And now replace the lower pane with the old top level splitter grid control
                     newTopLevelSplitterGridControl.ReplaceSecondChildGridSplitter(oldTopLevelSplitterGridControl, proportion);
                 }
             }
 
-            switch (splitterEdgeDockKind)
+            switch (splitterPanelPosition)
             {
-                case SplitterEdgeKind.Left:
-                    {
-                        AddSplitterEdge(1, SplitterMode.Vertical, 0.7);
-                    }
-                    break;
-                case SplitterEdgeKind.Right:
-                    {
-                        AddSplitterEdge(0, SplitterMode.Vertical, 0.3);
-                    }
-                    break;
-                case SplitterEdgeKind.Top:
-                    {
-                        AddSplitterEdge(1, SplitterMode.Horizontal, 0.7);
-                    }
-                    break;
-                case SplitterEdgeKind.Bottom:
-                    {
-                        AddSplitterEdge(0, SplitterMode.Horizontal, 0.3);
-                    }
-                    break;
+            case SplitterPanelPosition.Left:
+                {
+                    AddSplitterEdge(1, SplitterMode.Vertical, 0.7);
+                }
+                break;
+            case SplitterPanelPosition.Right:
+                {
+                    AddSplitterEdge(0, SplitterMode.Vertical, 0.3);
+                }
+                break;
+            case SplitterPanelPosition.Top:
+                {
+                    AddSplitterEdge(1, SplitterMode.Horizontal, 0.7);
+                }
+                break;
+            case SplitterPanelPosition.Bottom:
+                {
+                    AddSplitterEdge(0, SplitterMode.Horizontal, 0.3);
+                }
+                break;
+            default:
+                throw new InvalidOperationException($"Unhandled {nameof(SplitterPanelPosition)}");
             }
         }
 
@@ -237,12 +245,22 @@ namespace SplitterGrid
         {
             base.OnApplyTemplate();
 
-            _topLevelSplitterGridControl = FindName("rootSplitterGrid") as SplitterGridControl;
+            _topLevelSplitterGridControl = FindName("rootSplitterPanel") as SplitterPanelControl;
             _topLevelSplitterGridControl?.ToggleDesignMode(DesignMode);
             _topLevelSplitterGridControl?.SetGridSplitterThickness(GridSplitterThickness);
-            _topLevelSplitterGridControl?.SetGridSplitterDataTemplateSelector(DataTemplateSelector);
+            _topLevelSplitterGridControl?.SetDataTemplateSelector(DataTemplateSelector);
 
             _parentGrid = FindName("parentGrid") as Grid;
+        }
+
+        /// <summary>
+        /// Recursively obtains the tree of splitter infos describing the configuration of the layout
+        /// Mainly of use in either cloning a layout or serializing it
+        /// </summary>
+        /// <returns>The complete tree of splitter infos describing the panels in the layout configuration</returns>
+        internal SplitterPanelInfo GetSplitterPanelInfo()
+        {
+            return _topLevelSplitterGridControl?.GetSplitterPanelInfo();
         }
 
         /// <summary>

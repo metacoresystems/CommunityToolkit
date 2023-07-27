@@ -4,13 +4,13 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:interactivity="using:Microsoft.Xaml.Interactivity"
     xmlns:core="using:Microsoft.Xaml.Interactions.Core">
-   
-    <Style TargetType="local:SplitterGridLayout">
+
+    <Style TargetType="local:SplitterPanelLayoutControl">
         <Setter Property="Template">
             <Setter.Value>
-                <ControlTemplate TargetType="local:SplitterGridLayout">
+                <ControlTemplate TargetType="local:SplitterPanelLayoutControl">
                     <Grid x:Name="parentGrid">
-                        <local:SplitterGridControl x:Name="rootSplitterGrid"/>
+                        <local:SplitterPanelControl x:Name="rootSplitterPanel"/>
                     </Grid>
                 </ControlTemplate>
             </Setter.Value>

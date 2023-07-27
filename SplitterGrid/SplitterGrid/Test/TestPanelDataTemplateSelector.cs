@@ -13,9 +13,16 @@ namespace SplitterGrid.Test
     /// </summary>
     public class TestPanelDataTemplateSelector : DataTemplateSelector
     {
+        private static readonly DataTemplate TestPanelDataTemplate = (DataTemplate)App.Current.Resources["testPanelDataTemplate"];
+
         protected override DataTemplate SelectTemplateCore(object item, DependencyObject container)
         {
-            return (DataTemplate)App.Current.Resources["testPanelDataTemplate"];
+            return TestPanelDataTemplate;
+        }
+
+        protected override DataTemplate SelectTemplateCore(object item)
+        {
+            return TestPanelDataTemplate;
         }
     }
 }

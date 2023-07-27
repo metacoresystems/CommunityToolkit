@@ -13,10 +13,16 @@ namespace SplitterGrid
         private bool _isDesignMode;
 
         private readonly RelayCommand _editLayoutCommand;
+        private readonly RelayCommand _serializeLayoutCommand;
 
-        public PageViewModel()
+        public PageViewModel(SplitterPanelLayoutControl splitterPanelLayoutControl)
         {
             _editLayoutCommand = new RelayCommand(() => IsDesignMode = !IsDesignMode);
+            _serializeLayoutCommand = new RelayCommand(() =>
+            {
+                var splitterPanelInfo = splitterPanelLayoutControl.GetSplitterPanelInfo();
+                Console.WriteLine(splitterPanelInfo);
+            });
         }
 
         public bool IsDesignMode
@@ -26,5 +32,7 @@ namespace SplitterGrid
         }
 
         public RelayCommand EditLayoutCommand => _editLayoutCommand;
+
+        public RelayCommand SerializeLayoutCommand => _serializeLayoutCommand;
     }
 }

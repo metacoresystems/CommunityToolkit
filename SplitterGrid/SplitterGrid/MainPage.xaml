@@ -17,17 +17,20 @@
         </Grid.RowDefinitions>
 
         <Grid Background="#11FFFFFF">
-            <ToggleButton Margin="2" Command="{Binding EditLayoutCommand}">Edit Layout</ToggleButton>
+            <StackPanel Orientation="Horizontal">
+                <ToggleButton Margin="2" Command="{Binding EditLayoutCommand}">Edit Layout</ToggleButton>
+                <Button Margin="2" Command="{Binding SerializeLayoutCommand}">Serialize Layout</Button>
+            </StackPanel>
         </Grid>
 
-        <local:SplitterGridLayout DesignMode="{Binding IsDesignMode}" Grid.Row="1">
-            <local:SplitterGridLayout.DataContextFactory>
+        <local:SplitterPanelLayoutControl x:Name="splitterPanelLayout" DesignMode="{Binding IsDesignMode}" Grid.Row="1">
+            <local:SplitterPanelLayoutControl.DataContextFactory>
                 <test:TestPanelDataContextFactory/>
-            </local:SplitterGridLayout.DataContextFactory>
-            <local:SplitterGridLayout.DataTemplateSelector>
+            </local:SplitterPanelLayoutControl.DataContextFactory>
+            <local:SplitterPanelLayoutControl.DataTemplateSelector>
                 <test:TestPanelDataTemplateSelector/>
-            </local:SplitterGridLayout.DataTemplateSelector>
-        </local:SplitterGridLayout>
+            </local:SplitterPanelLayoutControl.DataTemplateSelector>
+        </local:SplitterPanelLayoutControl>
 
     </Grid>
     
