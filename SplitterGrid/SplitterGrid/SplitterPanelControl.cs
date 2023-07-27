@@ -48,13 +48,13 @@ namespace SplitterGrid
             nameof(FirstChildProportionalSize),
             typeof(double?),
             typeof(SplitterPanelControl),
-            new PropertyMetadata(null, OnFirstChildProportionalSizeChanged));
+            new PropertyMetadata(null));
 
         public static readonly DependencyProperty SecondChildProportionalSizeProperty = DependencyProperty.Register(
             nameof(SecondChildProportionalSize),
             typeof(double?),
             typeof(SplitterPanelControl),
-            new PropertyMetadata(null, OnSecondChildProportionalSizeChanged));
+            new PropertyMetadata(null));
 
         public static readonly DependencyProperty SplitterModeProperty = DependencyProperty.Register(
             nameof(SplitterMode),
@@ -62,16 +62,6 @@ namespace SplitterGrid
             typeof(SplitterPanelControl),
             // By default, the splitter mode is a content host
             new PropertyMetadata(SplitterMode.ContentHost, OnSplitterModeChanged));
-
-        private static void OnFirstChildProportionalSizeChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args)
-        {
-            
-        }
-
-        private static void OnSecondChildProportionalSizeChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args)
-        {
-            
-        }
 
         private static void OnSplitterModeChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args)
         {
@@ -97,15 +87,10 @@ namespace SplitterGrid
 
         private static readonly SolidColorBrush SelectionHighlightColor = new TextBox().SelectionHighlightColor;
 
-        public SplitterPanelControl() : this(null)
-        {
-        }
-
-        public SplitterPanelControl(DataTemplateSelector dataTemplateSelector)
+        public SplitterPanelControl()
         {
             // We start as a content host always
             SetSplitterMode(SplitterMode.ContentHost);
-            _contentControl.ContentTemplateSelector = dataTemplateSelector;
         }
 
         private SplitterPanelLayoutControl GetParentLayout()
