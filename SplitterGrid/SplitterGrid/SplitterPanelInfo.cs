@@ -10,8 +10,13 @@ namespace SplitterGrid
     /// Represents minimal metadata about a splitter panel
     /// Generally used for serialization purposes
     /// </summary>
-    internal class SplitterPanelInfo
+    public class SplitterPanelInfo
     {
+        /// <summary>
+        /// The data context associated with the panel (if this is a content host panel)
+        /// </summary>
+        public object DataContext { get; set; }
+
         /// <summary>
         /// If this panel is a splitter, this is the proportional size of the first child
         /// </summary>

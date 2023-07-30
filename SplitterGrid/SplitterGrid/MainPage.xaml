@@ -20,6 +20,8 @@
             <StackPanel Orientation="Horizontal">
                 <ToggleButton Margin="2" Command="{Binding EditLayoutCommand}">Edit Layout</ToggleButton>
                 <Button Margin="2" Command="{Binding SerializeLayoutCommand}">Serialize Layout</Button>
+                <Button Margin="2" Command="{Binding DeserializeLayoutCommand}">Deserialize Layout</Button>
+                <Button Margin="2" Command="{Binding ClearLayoutCommand}">Clear Layout</Button>
             </StackPanel>
         </Grid>
 

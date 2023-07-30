@@ -93,6 +93,22 @@ namespace SplitterGrid
             SetSplitterMode(SplitterMode.ContentHost);
         }
 
+        /// <summary>
+        /// Ensures the splitter panel control is torn down on closing
+        /// Note: This is not ideal - would really like to be able to override
+        /// dispose but this is not possible with the underlying superclass
+        /// </summary>
+        public void Reset()
+        {
+            ToggleDesignMode(false);
+
+            _firstChildSplitterPanelControl?.Reset();
+            _secondChildSplitterPanelControl?.Reset();
+
+            _firstChildSplitterPanelControl = null;
+            _secondChildSplitterPanelControl = null;
+        }
+
         private SplitterPanelLayoutControl GetParentLayout()
         {
             FrameworkElement parent = Parent as FrameworkElement;
@@ -114,17 +130,45 @@ namespace SplitterGrid
         /// Recursively obtains the splitter panel info for this panel and all child panels
         /// </summary>
         /// <returns></returns>
-        internal SplitterPanelInfo GetSplitterPanelInfo()
+        internal SplitterPanelInfo ToSplitterPanelInfo()
         {
             var splitterPanelInfo = new SplitterPanelInfo();
 
             splitterPanelInfo.FirstChildProportionalSize = FirstChildProportionalSize;
             splitterPanelInfo.SecondChildProportionalSize = SecondChildProportionalSize;
             splitterPanelInfo.SplitterMode = SplitterMode;
-            splitterPanelInfo.FirstChildSplitterPanelInfo = _firstChildSplitterPanelControl?.GetSplitterPanelInfo();
-            splitterPanelInfo.SecondChildSplitterPanelInfo = _secondChildSplitterPanelControl?.GetSplitterPanelInfo();
+            splitterPanelInfo.FirstChildSplitterPanelInfo = _firstChildSplitterPanelControl?.ToSplitterPanelInfo();
+            splitterPanelInfo.SecondChildSplitterPanelInfo = _secondChildSplitterPanelControl?.ToSplitterPanelInfo();
 
             return splitterPanelInfo;
+        }
+
+        /// <summary>
+        /// Recursively creates a splitter panel control from the splitter panel info
+        /// </summary>
+        /// <param name="splitterPanelInfo"></param>
+        /// <returns>The splitter panel control</returns>
+        internal static SplitterPanelControl FromSplitterPanelInfo(Grid parentGrid, SplitterPanelInfo splitterPanelInfo)
+        {
+            var splitterPanelControl = new SplitterPanelControl();
+            parentGrid.Children.Add(splitterPanelControl);
+
+            splitterPanelControl.SplitterMode = splitterPanelInfo.SplitterMode;
+            
+            if (splitterPanelInfo.FirstChildSplitterPanelInfo != null)
+            {
+                splitterPanelControl.ReplaceFirstChildGridSplitter(SplitterPanelControl.FromSplitterPanelInfo(splitterPanelControl, splitterPanelInfo.FirstChildSplitterPanelInfo));
+            }
+
+            if (splitterPanelInfo.SecondChildSplitterPanelInfo != null)
+            {
+                splitterPanelControl.ReplaceSecondChildGridSplitter(SplitterPanelControl.FromSplitterPanelInfo(splitterPanelControl, splitterPanelInfo.SecondChildSplitterPanelInfo));
+            }
+
+            splitterPanelControl.FirstChildProportionalSize = splitterPanelInfo.FirstChildProportionalSize;
+            splitterPanelControl.SecondChildProportionalSize = splitterPanelInfo.SecondChildProportionalSize;
+
+            return splitterPanelControl;
         }
 
         /// <summary>
@@ -563,9 +607,6 @@ namespace SplitterGrid
             splitterPanelControl._contentControl.ContentTemplate = contentTemplateSelector?.SelectTemplate(dataContext, this);
             splitterPanelControl.DataContext = dataContext;
 
-            Console.WriteLine(splitterPanelControl._contentControl.ContentTemplateSelector);
-            Console.WriteLine(splitterPanelControl.DataContext);
-
             // Synchronize the design mode state
             splitterPanelControl.ToggleDesignMode(DesignMode);
 
@@ -681,8 +722,6 @@ namespace SplitterGrid
 
         private void ReplaceChildSplitterControl(ref SplitterPanelControl currentSplitterGridControl, SplitterPanelControl newSplitterGridControl, double proportion)
         {
-            if (currentSplitterGridControl == null) return;
-
             int replaceIndex = Children.IndexOf(currentSplitterGridControl);
             if (replaceIndex == -1) return;
 
@@ -833,6 +872,10 @@ namespace SplitterGrid
             // Should be in design mode otherwise we would not have been asked to remove a child
             ToggleDesignMode(true);
         }
+
+        internal SplitterPanelControl FirstChildSplitterPanelControl => _firstChildSplitterPanelControl;
+
+        internal SplitterPanelControl SecondChildSplitterPanelControl => _secondChildSplitterPanelControl;
 
         /// <summary>
         /// Indicates whether the grid splitter is in design mode, showing the panel
