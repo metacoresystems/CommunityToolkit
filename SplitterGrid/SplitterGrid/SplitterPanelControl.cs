@@ -139,6 +139,7 @@ namespace SplitterGrid
             splitterPanelInfo.SplitterMode = SplitterMode;
             splitterPanelInfo.FirstChildSplitterPanelInfo = _firstChildSplitterPanelControl?.ToSplitterPanelInfo();
             splitterPanelInfo.SecondChildSplitterPanelInfo = _secondChildSplitterPanelControl?.ToSplitterPanelInfo();
+            splitterPanelInfo.DataContext = DataContext;
 
             return splitterPanelInfo;
         }
@@ -167,6 +168,21 @@ namespace SplitterGrid
 
             splitterPanelControl.FirstChildProportionalSize = splitterPanelInfo.FirstChildProportionalSize;
             splitterPanelControl.SecondChildProportionalSize = splitterPanelInfo.SecondChildProportionalSize;
+
+            if (splitterPanelInfo.DataContext != null)
+            {
+                splitterPanelControl.DataContext = splitterPanelInfo.DataContext;
+
+                var dataTemplateSelector = splitterPanelControl.GetParentLayout()?.DataTemplateSelector;
+
+                // Note: Would use a DataTemplateSelector here, but there seems to be a bug in
+                // Uno's repainting of the content control when the template selector is changed
+                // We therefore for now call the data template selector directly
+                splitterPanelControl._contentControl.ContentTemplateSelector = dataTemplateSelector;
+
+                var dataTemplate = dataTemplateSelector?.SelectTemplate(splitterPanelControl.DataContext, splitterPanelControl);
+                splitterPanelControl._contentControl.ContentTemplate = dataTemplate;
+            }
 
             return splitterPanelControl;
         }
