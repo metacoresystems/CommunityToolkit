@@ -323,6 +323,7 @@ namespace SplitterGrid
 
             // Create the new empty top level splitter grid control
             _topLevelSplitterPanelControl = new SplitterPanelControl();
+            _topLevelSplitterPanelControl.ToggleDesignMode(DesignMode);
 
             // And add to the layout
             _parentGrid.Children.Add(_topLevelSplitterPanelControl);
