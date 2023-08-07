@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SplitterGrid
+namespace CommunityToolkit.WinUI.UI.Controls.SplitterPanelLayout
 {
     /// <summary>
     /// A factory that creates a data context for a panel

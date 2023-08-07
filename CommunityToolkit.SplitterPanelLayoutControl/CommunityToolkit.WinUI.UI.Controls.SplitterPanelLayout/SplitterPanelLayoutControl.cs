@@ -1,18 +1,20 @@
-﻿using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Media;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+
 using Windows.Foundation;
 using Windows.UI.Core;
 
-namespace SplitterGrid
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
+
+namespace CommunityToolkit.WinUI.UI.Controls.SplitterPanelLayout
 {
     #region Supporting Classes
 
@@ -167,26 +169,6 @@ namespace SplitterGrid
             splitterGridLayout._topLevelSplitterPanelControl?.SetDataTemplateSelector((DataTemplateSelector)args.NewValue);
         }
 
-        private void InternalDebugPanelControl(SplitterPanelControl splitterPanelControl, int level)
-        {
-            if (splitterPanelControl == null) return;
-
-            for (int index = 0; index < level; index++)
-            {
-                Console.Write("  ");
-            }
-
-            Console.WriteLine($"SplitterPanelControl : {nameof(SplitterPanelControl.SplitterMode)}={splitterPanelControl.SplitterMode}");
-
-            InternalDebugPanelControl(splitterPanelControl.FirstChildSplitterPanelControl, level + 1);
-            InternalDebugPanelControl(splitterPanelControl.SecondChildSplitterPanelControl, level + 1);
-        }
-
-        private void DebugPanelControl()
-        {
-            InternalDebugPanelControl(_topLevelSplitterPanelControl, 0);
-        }
-
         private void ReplaceTopLevelSplitterGridControl(SplitterPanelControl splitterPanelControl)
         {
             // Remove the current top level splitter grid control from the parent grid
@@ -265,12 +247,12 @@ namespace SplitterGrid
         {
             base.OnApplyTemplate();
 
-            _topLevelSplitterPanelControl = FindName("rootSplitterPanel") as SplitterPanelControl;
+            _topLevelSplitterPanelControl = GetTemplateChild("rootSplitterPanel") as SplitterPanelControl;
             _topLevelSplitterPanelControl?.ToggleDesignMode(DesignMode);
             _topLevelSplitterPanelControl?.SetGridSplitterThickness(GridSplitterThickness);
             _topLevelSplitterPanelControl?.SetDataTemplateSelector(DataTemplateSelector);
 
-            _parentGrid = FindName("parentGrid") as Grid;
+            _parentGrid = GetTemplateChild("parentGrid") as Grid;
         }
 
         /// <summary>
@@ -309,8 +291,6 @@ namespace SplitterGrid
 
             // Add the top level splitter grid control to the parent grid
             _parentGrid.Children.Add(_topLevelSplitterPanelControl);
-
-            DebugPanelControl();
         }
 
         /// <summary>

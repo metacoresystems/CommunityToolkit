@@ -1,5 +1,11 @@
-﻿using CommunityToolkit.Mvvm.Input;
-using CommunityToolkit.WinUI.UI.Controls;
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -8,20 +14,17 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Markup;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Shapes;
-using SplitterGrid.Converters;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+
 using Windows.Foundation;
 using Windows.UI;
 using Windows.UI.Composition;
 using Windows.UI.Core;
 
-namespace SplitterGrid
+using CommunityToolkit.WinUI.UI.Controls;
+using CommunityToolkit.WinUI.UI.Controls.SplitterPanelLayout.Utilities;
+using CommunityToolkit.WinUI.UI.Controls.SplitterPanelLayout.Converters;
+
+namespace CommunityToolkit.WinUI.UI.Controls.SplitterPanelLayout
 {
     public enum SplitterMode
     {
@@ -106,19 +109,7 @@ namespace SplitterGrid
 
         private SplitterPanelLayoutControl GetParentLayout()
         {
-            FrameworkElement parent = Parent as FrameworkElement;
-
-            while (parent != null)
-            {
-                if (parent is SplitterPanelLayoutControl splitterGridLayout)
-                {
-                    return splitterGridLayout;
-                }
-
-                parent = parent.Parent as FrameworkElement;
-            }
-
-            return null;
+            return this.FindAscendant<SplitterPanelLayoutControl>();
         }
 
         /// <summary>
@@ -228,7 +219,7 @@ namespace SplitterGrid
             if (!e.Pointer.IsInContact || !pointerProperties.IsLeftButtonPressed) return;
 
             // Ensure pointer is captured
-            if (CapturePointer(e.Pointer))
+            if (CapturePointer(e.Pointer) && _dragPreviewGrid == null)
             {
                 // Get the start point with respect to the parent layout
                 Point currentPoint = e.GetCurrentPoint(parentLayout).Position;
@@ -278,7 +269,7 @@ namespace SplitterGrid
             if (!DesignMode) return;
             if (_dragPreviewGrid == null) return;
 
-            if (PointerCaptures.Contains(e.Pointer))
+            if (PointerCaptures.Any(p => e.Pointer.PointerId == p.PointerId))
             {
                 _dragStart = null;
 
@@ -389,24 +380,22 @@ namespace SplitterGrid
 
             foreach (var supportedDataContext in dataContextFactory.GetSupportedDataContexts())
             {
-                setPanelMenuItem.Items.Add(new MenuFlyoutItem()
+                var menuFlyoutItem = new MenuFlyoutItem() { Text = supportedDataContext.Key };
+                menuFlyoutItem.Click += (s, e) =>
                 {
-                    Text = supportedDataContext.Key,
-                    Command = new RelayCommand(() =>
-                    {
-                        DataContext = dataContextFactory.CreateDataContext(supportedDataContext.Value);
-                        var dataTemplateSelector = GetParentLayout()?.DataTemplateSelector;
+                    DataContext = dataContextFactory.CreateDataContext(supportedDataContext.Value);
+                    var dataTemplateSelector = GetParentLayout()?.DataTemplateSelector;
 
-                        // Note: Would use a DataTemplateSelector here, but there seems to be a bug in
-                        // Uno's repainting of the content control when the template selector is changed
-                        // We therefore for now call the data template selector directly
-                        _contentControl.ContentTemplateSelector = dataTemplateSelector;
+                    // Note: Would use a DataTemplateSelector here, but there seems to be a bug in
+                    // Uno's repainting of the content control when the template selector is changed
+                    // We therefore for now call the data template selector directly
+                    _contentControl.ContentTemplateSelector = dataTemplateSelector;
 
-                        var dataTemplate = dataTemplateSelector?.SelectTemplate(DataContext, this);
-                        _contentControl.ContentTemplate = dataTemplate;
-                    },
-                    () => !IsSplitterActive)
-                });
+                    var dataTemplate = dataTemplateSelector?.SelectTemplate(DataContext, this);
+                    _contentControl.ContentTemplate = dataTemplate;
+                };
+
+                setPanelMenuItem.Items.Add(menuFlyoutItem);
             }
 
             menuFlyout.Items.Add(new MenuFlyoutSeparator());
@@ -416,14 +405,16 @@ namespace SplitterGrid
 
             void CreateAddPanelSubMenuItem(string description, SplitterPanelPosition position)
             {
-                addPanelMenuSubItem.Items.Add(new MenuFlyoutItem()
+                var menuFlyoutItem = new MenuFlyoutItem()
                 {
                     Text = description,
-                    Command = new RelayCommand(() =>
-                    {
-                        GetParentLayout()?.AddSplitterPanel(position);
-                    }),
-                });
+                };
+                menuFlyoutItem.Click += (s, e) =>
+                {
+                    if (!IsSplitterActive) GetParentLayout()?.AddSplitterPanel(position);
+                };
+
+                addPanelMenuSubItem.Items.Add(menuFlyoutItem);
             }
 
             CreateAddPanelSubMenuItem("Top", SplitterPanelPosition.Top);
@@ -437,8 +428,12 @@ namespace SplitterGrid
             {
                 var splitMenuItem = new MenuFlyoutItem()
                 {
-                    Text = description,
-                    Command = new RelayCommand(() => SplitterMode = mode, () => !IsSplitterActive)
+                    Text = description
+                };
+
+                splitMenuItem.Click += (s, e) =>
+                {
+                    if (!IsSplitterActive) SplitterMode = mode;
                 };
 
                 splitPanelSubMenuItem.Items.Add(splitMenuItem);
@@ -449,11 +444,15 @@ namespace SplitterGrid
 
             menuFlyout.Items.Add(splitPanelSubMenuItem);
             menuFlyout.Items.Add(new MenuFlyoutSeparator());
-            menuFlyout.Items.Add(new MenuFlyoutItem()
+
+            var removePanelMenuItem = new MenuFlyoutItem()
             {
                 Text = "Remove Panel",
-                Command = new RelayCommand(() => RemovePanel(), () => !IsSplitterActive)
-            });
+            };
+            removePanelMenuItem.Click += (s, e) =>
+            {
+                if (!IsSplitterActive) RemovePanel();
+            };
 
             // Set the panel context menu
             _designModeOverlayGrid.ContextFlyout = menuFlyout;

@@ -1,11 +1,15 @@
-﻿using Microsoft.UI.Xaml;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SplitterGrid.Test
+using Microsoft.UI.Xaml;
+
+using CommunityToolkit.WinUI.UI.Controls.SplitterPanelLayout;
+using DemonstrationApp.WinUI.ViewModel;
+
+namespace DemonstrationApp.WinUI
 {
     /// <summary>
     /// A factory that creates a data context for a panel

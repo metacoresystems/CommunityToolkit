@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SplitterGrid
+namespace CommunityToolkit.WinUI.UI.Controls.SplitterPanelLayout
 {
     /// <summary>
     /// Represents minimal metadata about a splitter panel
