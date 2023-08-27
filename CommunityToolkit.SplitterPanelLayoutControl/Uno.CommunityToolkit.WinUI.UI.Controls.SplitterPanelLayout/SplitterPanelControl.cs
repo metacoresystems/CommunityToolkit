@@ -597,7 +597,7 @@ namespace CommunityToolkit.WinUI.UI.Controls.SplitterPanelLayout
                 // Note: pending a fix to the redraw mechanism when we change the content
                 // template selector, we call it directly here on the current data context
                 _contentControl.ContentTemplateSelector = dataTemplateSelector;
-                _contentControl.ContentTemplate = dataTemplateSelector.SelectTemplate(DataContext);
+                _contentControl.ContentTemplate = dataTemplateSelector?.SelectTemplate(DataContext);
             }
 
             _firstChildSplitterPanelControl?.SetDataTemplateSelector(dataTemplateSelector);

@@ -5,6 +5,12 @@
     <RootNamespace>CommunityToolkit.WinUI.UI.Controls.SplitterPanelLayout</RootNamespace>
     <RuntimeIdentifiers>win10-x86;win10-x64;win10-arm64</RuntimeIdentifiers>
     <UseWinUI>true</UseWinUI>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <Title>$(AssemblyName)</Title>
+    <RepositoryUrl>https://github.com/metacoresystems/CommunityToolkit</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
   </PropertyGroup>
   <ItemGroup>
     <None Remove="Themes\Generic.xaml" />
