@@ -1,2 +1,2 @@
 # CommunityToolkit
-Open source repository for use by the development community
+This repository contains components developed by Meta Core Systems that are being released as open source (MIT) license components for free use by the community.
