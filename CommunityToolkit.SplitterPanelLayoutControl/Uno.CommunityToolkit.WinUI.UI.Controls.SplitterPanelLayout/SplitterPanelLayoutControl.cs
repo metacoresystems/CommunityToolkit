@@ -69,6 +69,13 @@ namespace CommunityToolkit.WinUI.UI.Controls.SplitterPanelLayout
                 typeof(SplitterPanelLayoutControl),
                 new Microsoft.UI.Xaml.PropertyMetadata(null, OnDataTemplateSelectorChanged));
 
+        // Define a dependency property for the panel data template selector
+        public static readonly Microsoft.UI.Xaml.DependencyProperty SettingsDataTemplateSelectorProperty =
+            Microsoft.UI.Xaml.DependencyProperty.Register(nameof(SettingsDataTemplateSelector),
+                typeof(DataTemplateSelector),
+                typeof(SplitterPanelLayoutControl),
+                new Microsoft.UI.Xaml.PropertyMetadata(null, OnSettingsDataTemplateSelectorChanged));
+
         public SplitterPanelLayoutControl()
         {
             DefaultStyleKey = typeof(SplitterPanelLayoutControl);
@@ -167,6 +174,14 @@ namespace CommunityToolkit.WinUI.UI.Controls.SplitterPanelLayout
             if (splitterGridLayout == null) return;
 
             splitterGridLayout._topLevelSplitterPanelControl?.SetDataTemplateSelector((DataTemplateSelector)args.NewValue);
+        }
+
+        private static void OnSettingsDataTemplateSelectorChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args)
+        {
+            SplitterPanelLayoutControl splitterGridLayout = (SplitterPanelLayoutControl)dependencyObject;
+            if (splitterGridLayout == null) return;
+
+            splitterGridLayout._topLevelSplitterPanelControl?.SetSettingsDataTemplateSelector((DataTemplateSelector)args.NewValue);
         }
 
         private void InternalDebugPanelControl(SplitterPanelControl splitterPanelControl, int level)
@@ -365,6 +380,12 @@ namespace CommunityToolkit.WinUI.UI.Controls.SplitterPanelLayout
         {
             get => (DataTemplateSelector)GetValue(DataTemplateSelectorProperty);
             set => SetValue(DataTemplateSelectorProperty, value);
+        }
+
+        public DataTemplateSelector SettingsDataTemplateSelector
+        {
+            get => (DataTemplateSelector)GetValue(SettingsDataTemplateSelectorProperty);
+            set => SetValue(SettingsDataTemplateSelectorProperty, value);
         }
     }
 }
